@@ -1,0 +1,18 @@
+package com.example.ClosedСlub.repository;
+
+import com.example.ClosedСlub.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+
+    Optional<User> findByName(String name);
+
+    List<User> id(Long id);
+
+    Optional<User> findById(Long id);
+
+}
