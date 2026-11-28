@@ -1,12 +1,19 @@
 package com.example.ClosedСlub.service;
 
+import com.example.ClosedСlub.dto.AccessByUUIDResponse;
+import com.example.ClosedСlub.dto.QrCodeRequest;
+import com.example.ClosedСlub.dto.QrCodeResponse;
 import com.example.ClosedСlub.entity.QrCode;
 import com.example.ClosedСlub.entity.User;
+import com.example.ClosedСlub.exception.QrCodeNotFoundException;
+import com.example.ClosedСlub.exception.UserNotFoundException;
 import com.example.ClosedСlub.repository.QrCodeRepository;
 import com.example.ClosedСlub.repository.UserRepository;
-import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Service;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,35 +28,64 @@ public class QrCodeService {
         this.userRepository = userRepository;
     }
 
-    public QrCode createForUser(Long userId) {
-        Optional<User> optionalUser = userRepository.findById(userId);
-        if (optionalUser.isEmpty()) {
-            throw new IllegalStateException("Участника " + userId + " не существует");
-        }
-        User user =  optionalUser.get();
-        UUID uuid = UUID.randomUUID();
-        QrCode qrCode = new QrCode();
-        qrCode.setUser(user);
-        qrCode.setUuid(uuid);
-        qrCode.setActive(true);
-        return qrCodeRepository.save(qrCode);
+    @Transactional
+    public QrCodeResponse createQrCode(QrCodeRequest request) {
+       User user = userRepository.findById(request.getUserId())
+               .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+
+       Optional<QrCode> activeQrCode = qrCodeRepository.findByUserIdAndActiveTrue(user.getId());
+
+       if (activeQrCode.isPresent()) {
+           QrCode oldCode = activeQrCode.get();
+           oldCode.setActive(false);
+           qrCodeRepository.save(oldCode);
+       }
+
+       QrCode newQrCode = new QrCode();
+       newQrCode.setUser(user);
+       newQrCode.setUuid(UUID.randomUUID());
+       newQrCode.setActive(true);
+
+       QrCode savedQrCode = qrCodeRepository.save(newQrCode);
+
+       return new QrCodeResponse(savedQrCode.getId(), savedQrCode.getUuid(), user.getId(), savedQrCode.isActive());
     }
 
     @Transactional
-    public String accessByQr(UUID uuid) {
-        Optional<QrCode> optionalQrCode = qrCodeRepository.findByUuid(uuid);
-        if (optionalQrCode.isEmpty()){
-            throw new IllegalStateException("Доступ закрыт");
-        }
-        QrCode qrCode = optionalQrCode.get();
-        if (!qrCode.isActive()) {
-            throw new IllegalStateException("Qr-Code не действителен");
-        }
-        qrCode.setActive(false);
-        qrCodeRepository.save(qrCode);
-        createForUser(qrCode.getUser().getId());
-        return qrCode.getUser().getName();
+    public AccessByUUIDResponse accessByUUID(UUID uuid) {
+       QrCode qrCode = qrCodeRepository.findByUuid(uuid)
+               .orElseThrow(() -> new QrCodeNotFoundException("Неверный или устаревший QR-код"));
+
+       User user = qrCode.getUser();
+
+       qrCode.setUuid(UUID.randomUUID());
+
+       qrCodeRepository.save(qrCode);
+
+       return new AccessByUUIDResponse(user.getName(), "Доступ разрешен!");
     }
 
+    @Transactional(readOnly = true)
+    public QrCodeResponse getById(Long id) {
+        QrCode qrCode = qrCodeRepository.findById(id)
+                .orElseThrow(() -> new QrCodeNotFoundException("QR-код не найден"));
 
+        return new QrCodeResponse(qrCode.getId(), qrCode.getUuid(), qrCode.getUser().getId(), qrCode.isActive());
+    }
+
+    @Transactional(readOnly = true)
+    public List<QrCodeResponse> getAll() {
+        return qrCodeRepository.findAll().stream()
+                .map(qrCode -> new QrCodeResponse(qrCode.getId(), qrCode.getUuid(), qrCode.getUser().getId(), qrCode.isActive()))
+                .toList();
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!qrCodeRepository.existsById(id)) {
+            throw new QrCodeNotFoundException("QR-код не найден");
+        }
+        qrCodeRepository.deleteById(id);
+    }
+    
 }

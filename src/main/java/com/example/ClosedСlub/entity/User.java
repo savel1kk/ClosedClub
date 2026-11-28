@@ -2,6 +2,9 @@ package com.example.ClosedСlub.entity;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "users")
 public class User {
@@ -11,6 +14,9 @@ public class User {
     private Long id;
 
     private  String name;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<QrCode> qrCodes = new ArrayList<>();
 
     public User() {
     }
@@ -33,5 +39,13 @@ public class User {
 
     public String getName() {
         return name;
+    }
+
+    public List<QrCode> getQrCodes() {
+        return qrCodes;
+    }
+
+    public void setQrCodes(List<QrCode> qrCodes) {
+        this.qrCodes = qrCodes;
     }
 }

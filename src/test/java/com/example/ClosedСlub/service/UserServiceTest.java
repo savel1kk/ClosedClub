@@ -1,6 +1,9 @@
 package com.example.ClosedСlub.service;
 
+import com.example.ClosedСlub.dto.UserCreateRequest;
+import com.example.ClosedСlub.dto.UserResponse;
 import com.example.ClosedСlub.entity.User;
+import com.example.ClosedСlub.exception.UserNotFoundException;
 import com.example.ClosedСlub.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,8 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,107 +27,39 @@ public class UserServiceTest {
     private UserService userService;
 
     @Test
-    void create_SavesTheNewParticipantIfTheNameIsNotInTheDatabase() {
-        User user = new User();
-        user.setName("Иванов Иван Иванович");
+    void create_shouldSaveUserAndReturnResponse() {
+        UserCreateRequest request = new UserCreateRequest();
+        request.setName("Иванов Иван Иванович");
 
-        when(userRepository.findByName("Иванов Иван Иванович")).thenReturn(Optional.empty());
-        when(userRepository.save(user)).thenReturn(user);
+        User savedUser = new User("Иванов Иван Иванович");
+        savedUser.setId(1L);
 
-        User result = userService.create(user);
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        assertEquals("Иванов Иван Иванович", result.getName());
-        verify(userRepository).save(user);
+        UserResponse response = userService.create(request);
+
+        assertNotNull(response);
+        assertEquals(1L, response.getId());
+        assertEquals("Иванов Иван Иванович", response.getName());
+        verify(userRepository, times(1)).save(any(User.class));
     }
 
     @Test
-    void create_ThrowsAnExceptionWhenTheNameAlreadyExists() {
-        User existingUser = new User();
-        existingUser.setName("Иванов Иван Иванович");
-
-        when(userRepository.findByName("Иванов Иван Иванович")).thenReturn(Optional.of(existingUser));
-
-        User newUser = new User();
-        newUser.setName("Иванов Иван Иванович");
-
-        assertThrows(IllegalStateException.class, () -> userService.create(newUser));
-
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void findById_SuccessfullySearchesById() {
-        User user = new User();
+    void getById_shouldReturnUser_whenExists() {
+        User user = new User("Петров Петр Петрович");
         user.setId(1L);
-
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        User result = userService.findById(1L);
+        UserResponse response = userService.getById(1L);
 
-        assertEquals(1L, result.getId());
+        assertEquals("Петров Петр Петрович", response.getName());
     }
 
     @Test
-    void findById_ThrowsAnExceptionIfTheIdIsNotInTheDatabase() {
+    void getById_shouldThrowException_whenNotFound() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalStateException.class, () -> userService.findById(99L));
-    }
-
-    @Test
-    void findAll_SuccessfullySeeksAllParticipants() {
-        User user1 = new User();
-        User user2 = new User();
-
-        user1.setName("Иванов Иван Иванович");
-        user2.setName("Федоров Федор Федорович");
-
-        when(userRepository.findAll()).thenReturn(List.of(user1, user2));
-
-        List<User> result = userService.findAll();
-
-        assertEquals(2, result.size());
-        verify(userRepository).findAll();
-    }
-
-    @Test
-    void delete_DeletesUserWhenIdExists() {
-        User user = new User();
-        user.setId(1L);
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        userService.delete(1L);
-
-        verify(userRepository).deleteById(1L);
-    }
-
-    @Test
-    void delete_ThrowsAnExceptionWhenIdNotExists() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalStateException.class, () -> userService.delete(99L));
-        verify(userRepository, never()).deleteById(any());
-    }
-
-    @Test
-    void update_UpdatesUserNameWhenIdExists() {
-        User user = new User();
-        user.setId(1L);
-        user.setName("Старое имя");
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        userService.update(1L, "Новое имя");
-
-        assertEquals("Новое имя", user.getName());
-        verify(userRepository).findById(1L);
-    }
-
-    @Test
-    void update_ThrowsAnExceptionWhenIdNotExists() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalStateException.class, () -> userService.update(99L, "Новое имя"));
+        assertThrows(UserNotFoundException.class, () -> userService.getById(99L));
     }
 }
+

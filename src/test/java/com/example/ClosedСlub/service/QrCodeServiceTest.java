@@ -1,7 +1,10 @@
 package com.example.ClosedСlub.service;
 
+import com.example.ClosedСlub.dto.*;
 import com.example.ClosedСlub.entity.QrCode;
 import com.example.ClosedСlub.entity.User;
+import com.example.ClosedСlub.exception.QrCodeNotFoundException;
+import com.example.ClosedСlub.exception.UserNotFoundException;
 import com.example.ClosedСlub.repository.QrCodeRepository;
 import com.example.ClosedСlub.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -13,11 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -37,76 +36,60 @@ public class QrCodeServiceTest {
     private QrCodeService qrCodeService;
 
     @Test
-    void createForUser_CreatesActiveQrCodeWhenUserExists() {
-        User user = new User();
-        user.setId(1L);
-        user.setName("Иван");
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(qrCodeRepository.save(any(QrCode.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        QrCode created = qrCodeService.createForUser(1L);
-
-        assertNotNull(created);
-        assertNotNull(created.getUuid());
-        assertTrue(created.isActive());
-        assertEquals(user, created.getUser());
-        verify(qrCodeRepository).save(any(QrCode.class));
-    }
-
-    @Test
-    void createForUser_ThrowsWhenUserNotFound() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalStateException.class, () -> qrCodeService.createForUser(99L));
-        verify(qrCodeRepository, never()).save(any());
-    }
-
-    @Test
-    void accessByQr_DeactivatesOldQrAndIssuesNewOneWhenActive() {
-        User user = new User();
+    void createQrCode_shouldDeactivateOldAndCreateNew() {
+        User user = new User("Иванов Иван Иванович");
         user.setId(1L);
 
-        UUID oldUuid = UUID.randomUUID();
-        QrCode activeCode = new QrCode();
-        activeCode.setUuid(oldUuid);
-        activeCode.setActive(true);
-        activeCode.setUser(user);
+        QrCodeRequest request = new QrCodeRequest();
+        request.setUserId(1L);
 
-        when(qrCodeRepository.findByUuid(oldUuid)).thenReturn(Optional.of(activeCode));
+        QrCode oldQr = new QrCode();
+        oldQr.setId(10L);
+        oldQr.setActive(true);
+        oldQr.setUser(user);
+
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(qrCodeRepository.save(any(QrCode.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(qrCodeRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(oldQr));
 
-        String allowedUser = qrCodeService.accessByQr(oldUuid);
+        when(qrCodeRepository.save(any(QrCode.class))).thenAnswer(invocation -> {
+            QrCode saved = invocation.getArgument(0);
+            saved.setId(20L);
+            return saved;
+        });
 
-        assertEquals(user.getName(), allowedUser);
-        assertFalse(activeCode.isActive());
+        QrCodeResponse response = qrCodeService.createQrCode(request);
+
+        assertNotNull(response);
+        assertEquals(20L, response.getId());
+        assertTrue(response.isActive());
+        assertFalse(oldQr.isActive());
         verify(qrCodeRepository, times(2)).save(any(QrCode.class));
     }
 
     @Test
-    void accessByQr_ThrowsWhenQrCodeNotFound() {
-        UUID unknownUuid = UUID.randomUUID();
-        when(qrCodeRepository.findByUuid(unknownUuid)).thenReturn(Optional.empty());
+    void accessByQr_shouldReturnUserAndChangeUuid() {
+        UUID oldUuid = UUID.randomUUID();
+        User user = new User("Иванов Иван Иванович");
+        user.setId(1L);
 
-        assertThrows(IllegalStateException.class, () -> qrCodeService.accessByQr(unknownUuid));
-        verify(qrCodeRepository, never()).save(any());
+        QrCode qrCode = new QrCode();
+        qrCode.setUuid(oldUuid);
+        qrCode.setUser(user);
+
+        when(qrCodeRepository.findByUuid(oldUuid)).thenReturn(Optional.of(qrCode));
+
+        AccessByUUIDResponse response = qrCodeService.accessByUUID(oldUuid);
+
+        assertEquals("Иванов Иван Иванович", response.getUserName());
+        assertNotEquals(oldUuid, qrCode.getUuid());
+        verify(qrCodeRepository, times(1)).save(qrCode);
     }
 
     @Test
-    void accessByQr_ThrowsWhenQrCodeIsAlreadyUsed() {
-        User user = new User();
-        user.setId(1L);
+    void accessByQr_shouldThrowException_whenUuidNotFound() {
+        UUID randomUuid = UUID.randomUUID();
+        when(qrCodeRepository.findByUuid(randomUuid)).thenReturn(Optional.empty());
 
-        UUID usedUuid = UUID.randomUUID();
-        QrCode usedCode = new QrCode();
-        usedCode.setUuid(usedUuid);
-        usedCode.setActive(false);
-        usedCode.setUser(user);
-
-        when(qrCodeRepository.findByUuid(usedUuid)).thenReturn(Optional.of(usedCode));
-
-        assertThrows(IllegalStateException.class, () -> qrCodeService.accessByQr(usedUuid));
-        verify(qrCodeRepository, never()).save(any());
+        assertThrows(QrCodeNotFoundException.class, () -> qrCodeService.accessByUUID(randomUuid));
     }
 }

@@ -1,10 +1,14 @@
 package com.example.ClosedСlub.service;
 
+import com.example.ClosedСlub.dto.UserCreateRequest;
+import com.example.ClosedСlub.dto.UserResponse;
+import com.example.ClosedСlub.dto.UserUpdateRequest;
 import com.example.ClosedСlub.entity.User;
+import com.example.ClosedСlub.exception.UserNotFoundException;
 import com.example.ClosedСlub.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
-import java.util.Optional;
+
 
 @Service
 public class UserService {
@@ -15,49 +19,43 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public List<User> findAll() {
-        return userRepository.findAll();
+    public List<UserResponse> getAll() {
+        return userRepository.findAll().stream()
+                .map(user -> new UserResponse(user.getId(), user.getName()))
+                .toList();
     }
 
-    public User create(User user) {
-        Optional<User> optionalUser = userRepository.findByName(user.getName());
-        if (optionalUser.isPresent()) {
-            throw new IllegalStateException("Данный участник уже есть в базе");
-        }
-        user.setId(null);
-        return userRepository.save(user);
+    public UserResponse getById (Long id) {
+        return userRepository.findById(id)
+                .map(user -> new UserResponse(user.getId(), user.getName()))
+                .orElseThrow(() -> new UserNotFoundException("Участник с id " + id + " не найден"));
     }
 
-    public User findById (Long id) {
-        Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isEmpty()) {
-            throw new IllegalStateException("Участника " + id + " не существует");
-        }
-        return optionalUser.get();
+    public UserResponse create(UserCreateRequest request) {
+        User user = new User();
+        user.setName(request.getName());
+
+        User savedUser =userRepository.save(user);
+        return new UserResponse(savedUser.getId(), savedUser.getName());
+    }
+
+    public UserResponse update(Long id, UserUpdateRequest request) {
+      User user = userRepository.findById(id)
+              .orElseThrow(() ->new UserNotFoundException("Участник с id " + id + " не найден"));
+
+      user.setName(request.getName());
+      User updateUser = userRepository.save(user);
+
+      return new UserResponse(updateUser.getId(), updateUser.getName());
+
     }
 
     public void delete(Long id) {
-        Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isEmpty()) {
-            throw new IllegalStateException("Участника " + id + " не существует");
+        if (!userRepository.existsById(id)) {
+            throw new UserNotFoundException("Пользователь с id " + id + " не найден");
         }
         userRepository.deleteById(id);
     }
 
-    public void update(Long id, String name) {
-        Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isEmpty()) {
-            throw new IllegalStateException("Участника " + id + " не существует");
-        }
-        User user = optionalUser.get();
 
-        if (name != null && !name.equals(user.getName())) {
-            Optional<User> foundByName = userRepository.findByName(name);
-            if (foundByName.isPresent()) {
-                throw new IllegalStateException("Данный участник уже есть в базе");
-            }
-            user.setName(name);
-        }
-        userRepository.save(user);
-    }
 }

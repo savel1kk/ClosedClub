@@ -1,13 +1,14 @@
 package com.example.ClosedСlub.controller;
 
+import com.example.ClosedСlub.dto.AccessByUUIDResponse;
+import com.example.ClosedСlub.dto.QrCodeRequest;
+import com.example.ClosedСlub.dto.QrCodeResponse;
 import com.example.ClosedСlub.entity.QrCode;
-import com.example.ClosedСlub.entity.User;
 import com.example.ClosedСlub.service.QrCodeService;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -20,14 +21,28 @@ public class QrCodeController {
         this.qrCodeService = qrCodeService;
     }
 
-    @PostMapping("/users/{userId}")
-    public QrCode createForUser (@PathVariable Long userId) {
-        return qrCodeService.createForUser(userId);
+    @PostMapping
+    public QrCodeResponse create (@Valid @RequestBody QrCodeRequest request) {
+        return qrCodeService.createQrCode(request);
     }
 
     @PostMapping("/access/{uuid}")
-    public String accesByQr (@PathVariable UUID uuid) {
-        return qrCodeService.accessByQr(uuid);
+    public AccessByUUIDResponse accessByUUID (@PathVariable UUID uuid) {
+        return qrCodeService.accessByUUID(uuid);
     }
 
+    @GetMapping
+    public List<QrCodeResponse> getAll() {
+        return qrCodeService.getAll();
+    }
+
+    @GetMapping("/{id}")
+    public QrCodeResponse getById(@PathVariable Long id) {
+        return qrCodeService.getById(id);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        qrCodeService.delete(id);
+    }
 }

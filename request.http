@@ -9,11 +9,55 @@ Content-Type: application/json
 ### 2. Проверка получение участника по его id
 GET http://localhost:8080/api/users/1
 
-### 3.Выпускаем QR-код для участника
-POST http://localhost:8080/api/qr/users/1
+### 3. Получение всех участников
+GET http://localhost:8080/api/users
 
-### 4.Первый вход по выданому QR
-POST http://localhost:8080/api/qr/access/39e21780-801b-43e3-a28a-ad0ba0e5d826
+### 4. Обновляем участника
+PUT http://localhost:8080/api/users/1
+Content-Type: application/json
 
-### 5.Повторный вход с тем же QR(возвращает ошибку, потому что QR одноразовый)
-POST http://localhost:8080/api/qr/access/39e21780-801b-43e3-a28a-ad0ba0e5d826
+{
+  "name": "Петров Петр Петрович"
+}
+
+### 5. Удалить участника
+DELETE http://localhost:8080/api/users/1
+
+### 6.Проверка валидации (Возврат ошибки 400)
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "name": ""
+}
+
+### 7.Создать QR-код для участника 1
+POST http://localhost:8080/api/qr
+Content-Type: application/json
+
+{
+  "userId": 1
+}
+
+### 8.Получить QR-код
+GET http://localhost:8080/api/qr
+
+### 9.Вход в клуб
+POST http://localhost:8080/api/qr/access/bf70695-9ddb-4490-8c2e-a813b9985331
+
+### 10. Повторный вход
+POST http://localhost:8080/api/qr/access/bf70695-9ddb-4490-8c2e-a813b9985331
+
+### 11.Создание второго QR-кода для этого же участинка
+POST http://localhost:8080/api/qr
+Content-Type: application/json
+
+{
+  "userId": 1
+}
+
+### 12.Удалить QR-код
+DELETE http://localhost:8080/api/qr/1
+
+### 13.Проверка на несуществующего участника
+GET http://localhost:8080/api/users/9999

@@ -16,7 +16,7 @@ public class QrCode {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
-    User user;
+    private User user;
 
     private boolean active = true;
 

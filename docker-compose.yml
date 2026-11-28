@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: closed_club_db
+    environment:
+      POSTGRES_USER: club_user
+      POSTGRES_PASSWORD: club_pass
+      POSTGRES_DB: closed_club
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+    postgres_data: {}
