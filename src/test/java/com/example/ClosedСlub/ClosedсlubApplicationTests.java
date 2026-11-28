@@ -1,4 +1,4 @@
-package com.example.Closed.lub;
+package com.example.ClosedСlub;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

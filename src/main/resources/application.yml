@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: closed-club
+
+  datasource:
+      url: jdbc:postgresql://localhost:5433/closed_club
+      username: club_user
+      password: club_pass
+      river-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
